@@ -6,10 +6,22 @@
   <title>淺綠背景大字 TXT 閱讀器</title>
   <style>
     :root{
-      --bg: #eaffea; /* 淺綠背景 */
+      --bg: #eaffea; /* 淺綠背景（白天） */
       --text-color: #08321a;
+      --control-bg: #eaffea;
+      --accent: #0b5f35;
       --base-size: 24px; /* 預設文字大小 */
+      --header-height: 72px;
     }
+
+    /* 夜間模式預設變數（當 body.add("dark") 時會套用） */
+    body.dark{
+      --bg: #07120b; /* 深夜背景 */
+      --text-color: #d7f1dd; /* 文字顏色 */
+      --control-bg: rgba(10,10,10,0.5);
+      --accent: #66c08a;
+    }
+
     html,body{height:100%;}
     body{
       margin:0;
@@ -21,7 +33,9 @@
       display:flex;
       flex-direction:column;
       align-items:center;
-      padding:24px;
+      /* 增加上方空間以容納固定的 topbar */
+      padding-top: calc(var(--header-height) + 16px);
+      transition: background-color 240ms ease, color 240ms ease;
     }
 
     .container{
@@ -29,18 +43,32 @@
       max-width:960px;
     }
 
-    header{
+    /* 固定在頁面上方的 topbar（不會捲動） */
+    .topbar{
+      position:fixed;
+      top:12px;
+      left:50%;
+      transform:translateX(-50%);
+      width:calc(100% - 48px);
+      max-width:960px;
+      height:var(--header-height);
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:12px;
-      margin-bottom:12px;
+      padding:12px 16px;
+      border-radius:12px;
+      background: var(--control-bg);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+      z-index:9999;
+      backdrop-filter: blur(6px);
     }
 
     h1{
-      font-size:20px;
+      font-size:18px;
       margin:0;
       font-weight:600;
+      color:var(--text-color);
     }
 
     .controls{
@@ -51,28 +79,42 @@
 
     input[type=file]{display:none}
     .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
       background:transparent;
       border:1px solid rgba(0,0,0,0.08);
       padding:8px 12px;
       border-radius:8px;
       cursor:pointer;
       font-size:14px;
+      min-height:40px;
+      white-space:nowrap;
+    }
+
+    /* 讓按鈕在夜間模式也保持可讀與一致 */
+    body.dark .btn{
+      border-color: rgba(255,255,255,0.08);
+      color:var(--text-color);
     }
 
     .btn:active{transform:translateY(1px)}
 
+    /* 內容顯示區：背景與整體頁面相同（透明） */
     .viewer{
-      background: var(--bg);
+      background: transparent; /* 跟頁面背景一致 */
       border-radius:12px;
-      padding:20px;
+      padding:28px 20px;
       min-height:60vh;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
       overflow:auto;
-      line-height:1.8;
+      line-height:1.9;
       font-size:var(--base-size);
       white-space:pre-wrap; /* 保留換行 */
       word-break:break-word;
       color:var(--text-color);
+      /* 在夜間或白天都會有輕微內陰影以提升閱讀焦點，但不改變背景顏色 */
+      box-shadow: inset 0 -6px 18px rgba(0,0,0,0.04);
     }
 
     .footnote{
@@ -91,39 +133,44 @@
       width:140px;
     }
 
+    /* 在行動裝置上做些微調 */
     @media (max-width:600px){
       :root{ --base-size:20px }
       h1{font-size:16px}
+      .topbar{ left:8px; transform:none; width:calc(100% - 16px); }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>淺綠背景大字 TXT 閱讀器</h1>
-      <div class="controls">
-        <label for="fileInput" class="btn">選擇本機 .txt 檔案</label>
-        <input id="fileInput" type="file" accept=".txt,text/plain">
-        <div class="actions">
-          <button id="loadSample" class="btn">載入 sample.txt（若有上傳）</button>
-          <button id="clearBtn" class="btn">清除畫面</button>
-        </div>
-      </div>
-    </header>
+  <div class="topbar" role="region" aria-label="控制列">
+    <h1>淺綠背景大字 TXT 閱讀器</h1>
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">
-      <label>文字大小</label>
-      <input id="fontRange" class="range" type="range" min="14" max="60" value="24">
-      <span id="fontSizeLabel">24px</span>
+    <div class="controls">
+      <label for="fileInput" class="btn" title="選擇本機 .txt 檔案">選擇 .txt 檔案</label>
+      <input id="fileInput" type="file" accept=".txt,text/plain">
+
+      <div class="actions">
+        <button id="loadSample" class="btn" title="載入與 index.html 同目錄的 sample.txt">載入 sample.txt</button>
+        <button id="clearBtn" class="btn" title="清除畫面內容">清除</button>
+        <button id="toggleTheme" class="btn" title="切換 日間 / 夜間 模式">切換 夜/日</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-left:6px">
+        <label for="fontRange" style="font-size:13px;">文字大小</label>
+        <input id="fontRange" class="range" type="range" min="14" max="60" value="24">
+        <span id="fontSizeLabel" style="min-width:56px;text-align:center;display:inline-block">24px</span>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="viewer" id="viewer" role="article" aria-live="polite">
+      <!-- 文字內容會顯示在這裡 -->
+      請按「選擇 .txt 檔案」或「載入 sample.txt」以顯示文字內容。
     </div>
 
-    <main class="viewer" id="viewer" role="article" aria-live="polite">
-      <!-- 文字內容會顯示在這裡 -->
-      請按「選擇本機 .txt 檔案」或「載入 sample.txt」以顯示文字內容。
-    </main>
-
     <div class="footnote">提示：將 <strong>index.html</strong> 與你的 <strong>sample.txt</strong> 放在同一個 GitHub repo 的根目錄並啟用 GitHub Pages（或直接在本機開啟 index.html）即可線上閱讀。</div>
-  </div>
+  </main>
 
   <script>
     const fileInput = document.getElementById('fileInput');
@@ -132,10 +179,12 @@
     const clearBtn = document.getElementById('clearBtn');
     const fontRange = document.getElementById('fontRange');
     const fontSizeLabel = document.getElementById('fontSizeLabel');
+    const toggleTheme = document.getElementById('toggleTheme');
 
     function showText(text, name){
-      // 將純文字放進 viewer，保留換行
-      viewer.textContent = `--- ${name || '檔案內容'} ---\n\n` + text;
+      viewer.textContent = `--- ${name || '檔案內容'} ---
+
+` + text;
       viewer.scrollTop = 0;
     }
 
@@ -177,12 +226,29 @@
       fontSizeLabel.textContent = v + 'px';
     });
 
-    // 可用按鍵快速操作：按 L 載入 sample.txt，按 C 清除
+    // 主題切換（加/移除 body.dark）
+    toggleTheme.addEventListener('click', ()=>{
+      document.body.classList.toggle('dark');
+      // 更新按鈕文字提示
+      const isDark = document.body.classList.contains('dark');
+      toggleTheme.textContent = isDark ? '切換 日間' : '切換 夜間';
+    });
+
+    // 可用按鍵快速操作：按 L 載入 sample.txt，按 C 清除，按 D 切換主題
     window.addEventListener('keydown', (e)=>{
       if(e.key === 'l' || e.key === 'L') loadSample.click();
       if(e.key === 'c' || e.key === 'C') clearBtn.click();
+      if(e.key === 'd' || e.key === 'D') toggleTheme.click();
     });
+
+    // 初始化：如果需要可自動偵測 prefers-color-scheme
+    (function initTheme(){
+      try{
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if(prefersDark) document.body.classList.add('dark');
+        toggleTheme.textContent = document.body.classList.contains('dark') ? '切換 日間' : '切換 夜間';
+      }catch(e){}
+    })();
   </script>
 </body>
 </html>
-
