@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>淺綠背景大字 TXT 閱讀器</title>
+  <style>
+    :root{
+      --bg: #eaffea; /* 淺綠背景 */
+      --text-color: #08321a;
+      --base-size: 24px; /* 預設文字大小 */
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans TC', 'Microsoft JhengHei', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-color);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:24px;
+    }
+
+    .container{
+      width:100%;
+      max-width:960px;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    h1{
+      font-size:20px;
+      margin:0;
+      font-weight:600;
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    input[type=file]{display:none}
+    .btn{
+      background:transparent;
+      border:1px solid rgba(0,0,0,0.08);
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .btn:active{transform:translateY(1px)}
+
+    .viewer{
+      background: rgba(255,255,255,0.6);
+      border-radius:12px;
+      padding:20px;
+      min-height:60vh;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      overflow:auto;
+      line-height:1.8;
+      font-size:var(--base-size);
+      white-space:pre-wrap; /* 保留換行 */
+      word-break:break-word;
+      color:var(--text-color);
+    }
+
+    .footnote{
+      margin-top:10px;
+      font-size:13px;
+      color:rgba(0,0,0,0.6);
+    }
+
+    .actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    .range{
+      width:140px;
+    }
+
+    @media (max-width:600px){
+      :root{ --base-size:20px }
+      h1{font-size:16px}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>淺綠背景大字 TXT 閱讀器</h1>
+      <div class="controls">
+        <label for="fileInput" class="btn">選擇本機 .txt 檔案</label>
+        <input id="fileInput" type="file" accept=".txt,text/plain">
+        <div class="actions">
+          <button id="loadSample" class="btn">載入 sample.txt（若有上傳）</button>
+          <button id="clearBtn" class="btn">清除畫面</button>
+        </div>
+      </div>
+    </header>
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">
+      <label>文字大小</label>
+      <input id="fontRange" class="range" type="range" min="14" max="60" value="24">
+      <span id="fontSizeLabel">24px</span>
+    </div>
+
+    <main class="viewer" id="viewer" role="article" aria-live="polite">
+      <!-- 文字內容會顯示在這裡 -->
+      請按「選擇本機 .txt 檔案」或「載入 sample.txt」以顯示文字內容。
+    </main>
+
+    <div class="footnote">提示：將 <strong>index.html</strong> 與你的 <strong>sample.txt</strong> 放在同一個 GitHub repo 的根目錄並啟用 GitHub Pages（或直接在本機開啟 index.html）即可線上閱讀。</div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const viewer = document.getElementById('viewer');
+    const loadSample = document.getElementById('loadSample');
+    const clearBtn = document.getElementById('clearBtn');
+    const fontRange = document.getElementById('fontRange');
+    const fontSizeLabel = document.getElementById('fontSizeLabel');
+
+    function showText(text, name){
+      // 將純文字放進 viewer，保留換行
+      viewer.textContent = `--- ${name || '檔案內容'} ---\n\n` + text;
+      viewer.scrollTop = 0;
+    }
+
+    fileInput.addEventListener('change', (e)=>{
+      const f = e.target.files && e.target.files[0];
+      if(!f) return;
+      if(!f.name.toLowerCase().endsWith('.txt')){
+        alert('請選擇 .txt 檔案');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        showText(reader.result, f.name);
+      }
+      reader.onerror = ()=>{
+        alert('讀取檔案失敗');
+      }
+      reader.readAsText(f, 'utf-8');
+    });
+
+    loadSample.addEventListener('click', async ()=>{
+      try{
+        const res = await fetch('sample.txt');
+        if(!res.ok) throw new Error('找不到 sample.txt（請確認檔案有上傳並與 index.html 同目錄）');
+        const txt = await res.text();
+        showText(txt, 'sample.txt');
+      }catch(err){
+        alert(err.message);
+      }
+    });
+
+    clearBtn.addEventListener('click', ()=>{
+      viewer.textContent = '';
+    });
+
+    fontRange.addEventListener('input',(e)=>{
+      const v = e.target.value;
+      document.documentElement.style.setProperty('--base-size', v + 'px');
+      fontSizeLabel.textContent = v + 'px';
+    });
+
+    // 可用按鍵快速操作：按 L 載入 sample.txt，按 C 清除
+    window.addEventListener('keydown', (e)=>{
+      if(e.key === 'l' || e.key === 'L') loadSample.click();
+      if(e.key === 'c' || e.key === 'C') clearBtn.click();
+    });
+  </script>
+</body>
+</html>
